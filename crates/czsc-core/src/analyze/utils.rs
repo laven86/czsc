@@ -34,10 +34,14 @@ pub fn remove_include(
     k2: &NewBar,
     k3: RawBar,
 ) -> Result<(bool, NewBar), AnalyzeErorr> {
-    // 根据k1和k2的high确定direction
+    // 根据k1和k2的high确定direction；high相等时退化到比较low
     let direction = if k1.high < k2.high {
         Direction::Up
     } else if k1.high > k2.high {
+        Direction::Down
+    } else if k1.low < k2.low {
+        Direction::Up
+    } else if k1.low > k2.low {
         Direction::Down
     } else {
         return Ok((false, NewBar::new_from_raw(&k3)));
@@ -122,18 +126,20 @@ pub fn check_fxs<B: AsRef<NewBar>>(bars: &[B]) -> Vec<FX> {
         if let [k1, k2, k3] = window
             && let Some(fx1) = check_fx(k1.as_ref(), k2.as_ref(), k3.as_ref())
         {
-            // 与Python版本保持一致：过滤重复的相同标记分型
-            // 默认情况下，fxs本身是顶底交替的，但是对于一些特殊情况下不是这样; 临时强制要求fxs序列顶底交替
-            if fxs.len() >= 2 && fx1.mark == fxs.last().unwrap().mark {
-                eprintln!(
-                    "check_fxs错误: {}，{:?}，{:?}",
-                    k2.as_ref().dt,
-                    fx1.mark,
-                    fxs.last().unwrap().mark
-                );
-            } else {
-                fxs.push(fx1);
+            if let Some(last) = fxs.last_mut() {
+                if fx1.mark == last.mark {
+                    // 同性分型：择优替换（顶取更高，底取更低）
+                    let should_replace = match fx1.mark {
+                        Mark::G => fx1.high > last.high,
+                        Mark::D => fx1.low < last.low,
+                    };
+                    if should_replace {
+                        *last = fx1;
+                    }
+                    continue;
+                }
             }
+            fxs.push(fx1);
         }
     }
     fxs
@@ -268,6 +274,8 @@ where
     let ab_include = (fx_a.high > fx_b.high && fx_a.low < fx_b.low)
         || (fx_a.high < fx_b.high && fx_a.low > fx_b.low);
 
+    // 结合律：顶底分型之间至少有1根独立K线（中心索引差>=4，总K线数>=7）
+    let min_bi_len = 7;
     // 检查成笔条件
     if !ab_include && bars_a.len() >= min_bi_len {
         let fxs_filtered: Vec<_> = fxs
