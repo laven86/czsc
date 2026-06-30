@@ -274,8 +274,6 @@ where
     let ab_include = (fx_a.high > fx_b.high && fx_a.low < fx_b.low)
         || (fx_a.high < fx_b.high && fx_a.low > fx_b.low);
 
-    // 结合律：顶底分型之间至少有1根独立K线（中心索引差>=4，总K线数>=7）
-    let min_bi_len = 7;
     // 检查成笔条件
     if !ab_include && bars_a.len() >= min_bi_len {
         let fxs_filtered: Vec<_> = fxs

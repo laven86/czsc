@@ -79,9 +79,10 @@ fn resolve_env_usize(explicit: usize, upper: &str, lower: &str, default: usize) 
     default
 }
 
-/// 笔最小长度：显式参数 (>0) 优先，否则读 `CZSC_MIN_BI_LEN`（大小写不敏感），再否则 6。
+/// 笔最小长度：显式参数 (>0) 优先，否则读 `CZSC_MIN_BI_LEN`（大小写不敏感），再否则 7。
+/// 默认 7 基于结合律：顶底分型之间至少需要1根独立K线（中心索引差>=4，总K线数>=7）。
 pub fn resolve_min_bi_len(explicit: usize) -> usize {
-    resolve_env_usize(explicit, "CZSC_MIN_BI_LEN", "czsc_min_bi_len", 6)
+    resolve_env_usize(explicit, "CZSC_MIN_BI_LEN", "czsc_min_bi_len", 7)
 }
 
 /// 最大笔数：显式参数 (>0) 优先，否则读 `CZSC_MAX_BI_NUM`，再否则 50。
@@ -850,7 +851,7 @@ dt,symbol,open,close,high,low,vol,amount
     #[test]
     fn test_czsc_bi_list() {
         let bars = get_bars();
-        let c = CZSC::new(bars, 50, 6);
+        let c = CZSC::new(bars, 50, 7);
 
         // min_bi_len=7（结合律要求顶底分型之间至少1根独立K线）：
         // 原 bi 3（Up, 2025-02-06→2025-02-11）仅6根NewBar，不满足成笔条件，
